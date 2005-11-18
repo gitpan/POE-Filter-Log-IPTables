@@ -3,5 +3,6 @@ Makefile.PL
 MANIFEST
 README
 t/POE-Filter-Log-IPTables.t
+t/regression.t
 IPTables.pm
 META.yml                                 Module meta-data (added by MakeMaker)

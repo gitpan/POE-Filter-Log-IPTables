@@ -1,7 +1,7 @@
 # -*- mode: cperl; cperl-indent-level: 4; -*-
 # vi:ai:sm:et:sw=4:ts=4
 
-# $Id: POE-Filter-Log-IPTables.t,v 1.6 2005/01/21 15:56:26 paulv Exp $
+# $Id: POE-Filter-Log-IPTables.t,v 1.7 2005/11/18 23:46:43 paulv Exp $
 
 # Before `make install' is performed this script should be runnable with
 # `make test'. After `make install' it should work as `perl POE-Filter-Log-IPTables.t'
@@ -50,8 +50,6 @@ my $filter = POE::Filter::Log::IPTables->new(
                                             );
 
 $obj = $filter->get([ $test_data->[$test] ]);
-
-print "\nTCP\n\n";
 
 is($obj->[0]->{in_int}, "eth2", "in interface");
 is($obj->[0]->{out_int}, undef, "out interface");
@@ -154,8 +152,6 @@ is($obj->[0]->{ip}->{tcp}->{urgp}, "0", "urgp");
 is($obj->[0]->{ip}->{tcp}->{leftover}, undef, "leftover");
 
 #UDP
-print "\nUDP\n\n";
-
 $obj = undef;
 $test++;
 $obj = $filter->get([ $test_data->[$test] ]);
@@ -177,8 +173,6 @@ is($obj->[0]->{ip}->{udp}->{len}, "12", "length");
 is($obj->[0]->{ip}->{udp}->{leftover}, undef, "leftover");
 
 #ICMP
-print "\nICMP\n\n";
-
 $obj = undef;
 $test++;
 $obj = $filter->get([ $test_data->[$test] ]);

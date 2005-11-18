@@ -1,7 +1,7 @@
 # -*- mode: cperl; cperl-indent-level: 4; -*-
 # vi:ai:sm:et:sw=4:ts=4
 
-# $Id: IPTables.pm,v 1.6 2005/01/21 15:56:26 paulv Exp $
+# $Id: IPTables.pm,v 1.9 2005/11/18 23:40:00 paulv Exp $
 
 package POE::Filter::Log::IPTables;
 
@@ -10,7 +10,7 @@ use warnings;
 use POE::Filter::Line;
 use Carp qw(carp croak);
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 sub new {
     my $class = shift;
@@ -70,9 +70,8 @@ sub _parse {
 
     # strip off syslog stuff
     if ($self->{syslog}) {
-        # this may be linux specific
         # Jan 11 17:30:35 hostname kernel:
-        $line =~ s/^\w\w\w\s+\d+ \d\d:\d\d:\d\d \w+ //;
+        $line =~ s/^\w\w\w\s+\d+ \d\d:\d\d:\d\d (?:\w|-|\.|_)+ //;
     }
 
     # remove prefix
@@ -137,8 +136,7 @@ sub _parse {
         ($ds->{ip}->{udp}, $leftover) = $self->_parseUDP($line);
     } else {
 #        $line =~ s/^PROTO=//g;
-        $ds->{ip}->{type} = "unknown";
-        ($ds->{ip}->{unknown}, $leftover) = $self->_parseUnknown($line);
+        ($ds->{ip}->{type}, $leftover) = $self->_parseUnknown($line);
     }
 
     $ds->{leftover} = $leftover;
@@ -153,9 +151,6 @@ sub _parseIP {
 
     print "IP: [$line]\n" if $self->{debug};
     
-    # SRC=66.193.87.113 DST=209.115.69.53 LEN=60 TOS=0x00 PREC=0x00
-    # TTL=49 ID=33354 DF
-
     # source address
     if ($line =~ / ?SRC=(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) /) {
         $ds->{src_addr} = $1;
@@ -364,8 +359,6 @@ sub _parseICMP {
     my $line = shift;
     my $ds;
 
-    # TYPE=3 CODE=3 [SRC=209.115.69.80 DST=66.74.32.191 LEN=907 TOS=0x00 PREC=0x00 TTL=117 ID=46424 PROTO=UDP SPT=26257 DPT=1027 LEN=887 ]
-    
     print "ICMP: [$line]\n" if $self->{debug};
 
     if ($line =~ /TYPE=(\d+) /) {
@@ -420,30 +413,25 @@ sub _parseICMP {
 sub _parseUnknown {
     my $self = shift;
     my $line = shift;
-    my $ds;
+    my $proto;
 
-    if ($line =~ /PROTO=(\w+) /) {
-        $ds->{proto} = $1;
+    if ($line =~ /PROTO=(\w+) ?/) {
+        $proto = (getprotobynumber($1))[0];
+
+        if (not defined($proto)) {
+            $proto = "unknown";
+        }
+
         $line =~ s/PROTO=$1 ?//;
     }
 
     if ($line and $line !~ /^\s+$/) {
-        return ($ds, $line);
+        return ($proto, $line);
     } else {
-        return ($ds, undef);
+        return ($proto, undef);
     }
 }
 
-# Okay.
-#
-# We're going to get LEN twice if PROTO=UDP (IP and UDP)
-#
-# We're going to get any number of weird things if PROTO=ICMP -- like
-# LEN 3 times (IP, [ IP, UDP ])
- 
-# Nov 28 11:17:33 malloc kernel: in: IN=ppp0 OUT= MAC= SRC=66.193.87.113 DST=209.115.69.223 LEN=492 TOS=0x00 PREC=0x00 TTL=240 ID=39184 PROTO=ICMP TYPE=3 CODE=3 [SRC=209.115.69.223 DST=66.193.87.113 LEN=464 TOS=0x00 PREC=0x00 TTL=52 ID=58665 DF PROTO=TCP SPT=34373 DPT=80 WINDOW=63712 RES=0x00 ACK PSH FIN URGP=0 ]
-# Dec  1 13:52:54 cbcfsmx kernel: INPUT rejected: IN=tun0 OUT= MAC= SRC=10.254.254.1 DST=192.168.1.1 LEN=78 TOS=0x00 PREC=0x00 TTL=64 ID=4740 DF PROTO=UDP SPT=137 DPT=137 LEN=58
-# 
 
 1;
 __END__
@@ -786,7 +774,7 @@ Paul Visscher, E<lt>paulv@cpan.orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2004 by Paul Visscher
+Copyright (C) 2004-2005 by Paul Visscher
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.4 or,
